@@ -136,10 +136,6 @@ def limpar_dados(df):
 
     return df, relatorio
 
-df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
-print(df_limpo.head())
-
-
 def criar_colunas_derivadas(df):
     """Cria colunas derivadas a partir do dataset limpo."""
     df = df.copy()
@@ -169,6 +165,78 @@ def criar_colunas_derivadas(df):
 
     return df
 
+def calcular_metricas(df):
+    """
+    Calcula as metricas agregadas do dataset.
+    Retorna um dicionario no formato {nome_da_metrica: DataFrame}.
+    """
+    metricas = {}
+
+    # por mes
+    por_mes = df.groupby("mes").agg(
+        receita_total=("receita_total", "sum"),
+        quantidade=("quantidade", "sum"),
+        n_vendas=("id_venda", "count"),
+    ).reset_index()
+    metricas["por_mes"] = por_mes
+
+    # top produtos (top 5)
+    top_produtos = df.groupby("produto").agg(
+        receita_total=("receita_total", "sum")
+    ).reset_index().sort_values("receita_total", ascending=False).head(5)
+    metricas["top_produtos"] = top_produtos
+
+    # por categoria
+    por_categoria = df.groupby("categoria").agg(
+        receita_total=("receita_total", "sum")
+    ).reset_index().sort_values("receita_total", ascending=False)
+    metricas["por_categoria"] = por_categoria
+
+    # por regiao (receita total e ticket medio)
+    por_regiao = df.groupby("regiao").agg(
+        receita_total=("receita_total", "sum"),
+        ticket_medio=("receita_total", "mean"),
+    ).reset_index().sort_values("receita_total", ascending=False)
+    metricas["por_regiao"] = por_regiao
+
+    print("\n=== POR MES ===")
+    print(por_mes)
+    print("\n=== TOP PRODUTOS ===")
+    print(top_produtos)
+    print("\n=== POR CATEGORIA ===")
+    print(por_categoria)
+    print("\n=== POR REGIAO ===")
+    print(por_regiao)
+
+    return metricas
+
+
+def segmentar_clientes(df):
+    """
+    Agrupa por cliente, soma a receita e classifica em
+    Bronze / Prata / Ouro.
+    Retorna um DataFrame com: cliente, total_gasto, segmento.
+    """
+    por_cliente = df.groupby("cliente").agg(
+        total_gasto=("receita_total", "sum")
+    ).reset_index()
+
+    por_cliente["segmento"] = por_cliente["total_gasto"].apply(
+        lambda gasto: "Bronze" if gasto < 5000
+        else ("Prata" if gasto < 15000 else "Ouro")
+    )
+
+    top_10 = por_cliente.sort_values("total_gasto", ascending=False).head(10)
+    distribuicao = por_cliente["segmento"].value_counts()
+
+    print("\n=== TOP 10 CLIENTES ===")
+    print(top_10)
+    print("\n=== DISTRIBUICAO POR SEGMENTO ===")
+    print(distribuicao)
+
+    return por_cliente
+
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 df_transformado = criar_colunas_derivadas(df_limpo)
-print(df_transformado.head())
+metricas = calcular_metricas(df_transformado)
+clientes_segmentados = segmentar_clientes(df_transformado)
