@@ -136,6 +136,7 @@ def limpar_dados(df):
 
     return df, relatorio
 
+
 def criar_colunas_derivadas(df):
     """Cria colunas derivadas a partir do dataset limpo."""
     df = df.copy()
@@ -164,6 +165,7 @@ def criar_colunas_derivadas(df):
     df["faixa_receita_item"] = np.select(condicoes, faixas, default="Nao Classificado")
 
     return df
+
 
 def calcular_metricas(df):
     """
@@ -236,7 +238,47 @@ def segmentar_clientes(df):
 
     return por_cliente
 
+
+def calcular_estatisticas_numpy(df):
+    """
+    Aplica operacoes NumPy sobre a coluna receita_total.
+    Retorna um dicionario com os valores agregados calculados.
+    """
+    receitas = df["receita_total"].to_numpy()
+
+    media = np.mean(receitas)
+    mediana = np.median(receitas)
+    desvio_padrao = np.std(receitas)
+    soma_total = np.sum(receitas)
+
+    # broadcasting: escalonar o array para o intervalo 0-1
+    receitas_normalizadas = (receitas - receitas.min()) / (receitas.max() - receitas.min())
+
+    # filtragem booleana: vendas acima da media
+    vendas_acima_media = receitas[receitas > media]
+    qtd_acima_media = len(vendas_acima_media)
+
+    estatisticas = {
+        "media": float(media),
+        "mediana": float(mediana),
+        "desvio_padrao": float(desvio_padrao),
+        "soma_total": float(soma_total),
+        "qtd_vendas_acima_media": int(qtd_acima_media),
+    }
+
+    print("\n=== ESTATISTICAS NUMPY (receita_total) ===")
+    print(f"Media: {estatisticas['media']:.2f}")
+    print(f"Mediana: {estatisticas['mediana']:.2f}")
+    print(f"Desvio padrao: {estatisticas['desvio_padrao']:.2f}")
+    print(f"Soma total: {estatisticas['soma_total']:.2f}")
+    print(f"Vendas acima da media: {estatisticas['qtd_vendas_acima_media']} de {len(receitas)}")
+    print(f"Exemplo de receitas normalizadas (0-1): {receitas_normalizadas[:5]}")
+
+    return estatisticas
+
+
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 df_transformado = criar_colunas_derivadas(df_limpo)
 metricas = calcular_metricas(df_transformado)
 clientes_segmentados = segmentar_clientes(df_transformado)
+estatisticas_numpy = calcular_estatisticas_numpy(df_transformado)
