@@ -138,3 +138,37 @@ def limpar_dados(df):
 
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 print(df_limpo.head())
+
+
+def criar_colunas_derivadas(df):
+    """Cria colunas derivadas a partir do dataset limpo."""
+    df = df.copy()
+
+    # receita_total
+    df["receita_total"] = df["quantidade"] * df["preco_unitario"]
+
+    # mes, mes_nome, trimestre, ano
+    df["mes"] = df["data_venda"].dt.month
+    nomes_meses = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Marco", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
+    }
+    df["mes_nome"] = df["mes"].map(nomes_meses)
+    df["trimestre"] = "Q" + df["data_venda"].dt.quarter.astype(str)
+    df["ano"] = df["data_venda"].dt.year
+
+    # faixa_receita_item (transformacao condicional vetorizada)
+    condicoes = [
+        df["receita_total"] < 500,
+        (df["receita_total"] >= 500) & (df["receita_total"] < 5000),
+        df["receita_total"] >= 5000,
+    ]
+    faixas = ["Baixo Valor", "Medio Valor", "Alto Valor"]
+    df["faixa_receita_item"] = np.select(condicoes, faixas, default="Nao Classificado")
+
+    return df
+
+df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
+df_transformado = criar_colunas_derivadas(df_limpo)
+print(df_transformado.head())
