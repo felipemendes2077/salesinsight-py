@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import random
+import re
 from datetime import datetime, timedelta
 
 
@@ -76,3 +77,64 @@ def inspecionar_dados(df):
 
 
 inspecionar_dados(df_bruto)
+
+
+def limpar_dados(df):
+    """
+    Limpa e trata o DataFrame de vendas.
+    Retorna: (df_limpo, relatorio), onde relatorio e um dicionario
+    com as contagens de registros iniciais, removidos e finais.
+    """
+    total_inicial = len(df)
+
+    # 1. remover espacos extras nas colunas de texto
+    colunas_texto = ["data_venda", "cliente", "produto", "categoria", "regiao"]
+    for coluna in colunas_texto:
+        df[coluna] = df[coluna].str.strip()
+
+    # 2. converter data_venda e descartar datas invalidas
+    df["data_venda"] = pd.to_datetime(df["data_venda"], errors="coerce")
+    removidos_data_invalida = df["data_venda"].isna().sum()
+    df = df.dropna(subset=["data_venda"])
+
+    # 3. descartar nulos em quantidade e preco_unitario
+    antes_dropna = len(df)
+    df = df.dropna(subset=["quantidade", "preco_unitario"])
+    removidos_nulos = antes_dropna - len(df)
+
+    # 4. ajustar os tipos numericos
+    df["quantidade"] = df["quantidade"].astype(int)
+    df["preco_unitario"] = df["preco_unitario"].astype(float)
+
+    # 5. padronizar o nome do cliente
+    def padronizar_cliente(valor):
+        digitos = re.sub(r"\D", "", str(valor))
+        if digitos:
+            return f"Cliente_{int(digitos):03d}"
+        return valor
+
+    df["cliente"] = df["cliente"].apply(padronizar_cliente)
+    padrao_cliente = re.compile(r"^Cliente_\d{3}$")
+    fora_do_padrao = (~df["cliente"].apply(lambda c: bool(padrao_cliente.match(c)))).sum()
+
+    # 6. relatorio de limpeza
+    total_final = len(df)
+    relatorio = {
+        "total_inicial": total_inicial,
+        "removidos_data_invalida": int(removidos_data_invalida),
+        "removidos_nulos": int(removidos_nulos),
+        "clientes_fora_do_padrao": int(fora_do_padrao),
+        "total_final": total_final,
+    }
+
+    print("\n=== RELATORIO DE LIMPEZA ===")
+    print(f"Registros iniciais: {relatorio['total_inicial']}")
+    print(f"Removidos por data invalida: {relatorio['removidos_data_invalida']}")
+    print(f"Removidos por nulos criticos: {relatorio['removidos_nulos']}")
+    print(f"Clientes fora do padrao apos padronizacao: {relatorio['clientes_fora_do_padrao']}")
+    print(f"Registros finais: {relatorio['total_final']}")
+
+    return df, relatorio
+
+df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
+print(df_limpo.head())
