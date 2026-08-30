@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import random
 import re
+import json
 from datetime import datetime, timedelta
 
 
@@ -238,7 +239,6 @@ def segmentar_clientes(df):
 
     return por_cliente
 
-
 def calcular_estatisticas_numpy(df):
     """
     Aplica operacoes NumPy sobre a coluna receita_total.
@@ -276,6 +276,24 @@ def calcular_estatisticas_numpy(df):
 
     return estatisticas
 
+def exportar_resultados(metricas, clientes, estatisticas):
+    """Exporta os resultados do projeto em CSV e JSON."""
+    os.makedirs("outputs", exist_ok=True)
+
+    metricas["por_mes"].to_csv("outputs/metricas_por_mes.csv",
+                                index=False, encoding="utf-8-sig")
+    clientes.to_csv("outputs/segmentacao_clientes.csv",
+                     index=False, encoding="utf-8-sig")
+
+    serializavel = {k: round(float(v), 2) for k, v in estatisticas.items()}
+    caminho = "outputs/estatisticas_gerais.json"
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(serializavel, f, indent=4, ensure_ascii=False)
+
+    # leitura de volta para confirmar a escrita
+    with open(caminho, "r", encoding="utf-8") as f:
+        conferencia = json.load(f)
+    print(f"\n[Exportacao] CSVs salvos em outputs/. JSON gravado e lido: {conferencia}")
 
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 df_transformado = criar_colunas_derivadas(df_limpo)
