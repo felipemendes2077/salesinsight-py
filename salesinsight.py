@@ -380,6 +380,51 @@ def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
     df[nome_saida] = df[coluna].apply(funcao_transformacao)
     return df
 
+class AnalisadorDeVendas:
+    """Encapsula o fluxo de analise dos dados de vendas."""
+
+    def __init__(self, caminho_arquivo):
+        self.caminho_arquivo = caminho_arquivo
+        self.df_bruto = None
+        self.df_limpo = None
+        self.metricas = {}
+        self.clientes = None
+        self.estatisticas_numpy = {}
+        self.relatorio_limpeza = {}
+
+    def carregar(self):
+        """Le o CSV e guarda o DataFrame bruto."""
+        self.df_bruto = pd.read_csv(self.caminho_arquivo)
+        print(f"\n[Analisador] {len(self.df_bruto)} registros lidos.")
+
+    def limpar(self):
+        """Limpa os dados reaproveitando limpar_dados()."""
+        self.df_limpo, self.relatorio_limpeza = limpar_dados(self.df_bruto.copy())
+
+    def transformar(self):
+        """Cria as colunas derivadas reaproveitando criar_colunas_derivadas()."""
+        self.df_limpo = criar_colunas_derivadas(self.df_limpo)
+
+    def analisar(self):
+        """Calcula metricas, segmentacao e operacoes NumPy."""
+        self.metricas = calcular_metricas(self.df_limpo)
+        self.clientes = segmentar_clientes(self.df_limpo)
+        self.estatisticas_numpy = calcular_estatisticas_numpy(self.df_limpo)
+
+    def visualizar(self):
+        """Gera e exporta as quatro figuras."""
+        gerar_grafico_receita_por_mes(self.metricas)
+        gerar_grafico_top_produtos(self.metricas)
+        gerar_grafico_dispersao(self.df_limpo)
+        gerar_painel_resumo(self.metricas, self.df_limpo)
+
+    def resumo(self):
+        """Imprime um resumo executivo do que foi processado."""
+        print("\n=== RESUMO EXECUTIVO ===")
+        print(f"Registros analisados: {len(self.df_limpo)}")
+        print(f"Receita total: R$ {self.estatisticas_numpy['soma_total']:.2f}")
+        print(f"Clientes segmentados: {len(self.clientes)}")
+
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 df_transformado = criar_colunas_derivadas(df_limpo)
 metricas = calcular_metricas(df_transformado)
