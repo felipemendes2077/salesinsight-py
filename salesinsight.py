@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import random
 import re
+import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
@@ -10,6 +11,7 @@ from datetime import datetime, timedelta
 sns.set_theme(style="whitegrid", palette="muted")
 plt.rcParams["figure.figsize"] = (12, 6)
 plt.rcParams["axes.titlesize"] = 14
+
 
 def gerar_dataset_vendas(n_registros=200, seed=42):
     """Gera um dataset sintetico de vendas com dados sujos."""
@@ -64,13 +66,6 @@ def gerar_dataset_vendas(n_registros=200, seed=42):
     return pd.DataFrame(dados)
 
 
-# Gerar e salvar o CSV bruto
-df_bruto = gerar_dataset_vendas()
-df_bruto.to_csv("vendas.csv", index=False)
-print(f"Dataset gerado com {len(df_bruto)} registros.")
-print(df_bruto.head())
-
-
 def inspecionar_dados(df):
     """Exibe as informacoes estruturais do DataFrame."""
     print("\n=== INSPECAO INICIAL DO DATASET ===")
@@ -80,9 +75,6 @@ def inspecionar_dados(df):
     print(f"\nValores nulos por coluna:\n{df.isnull().sum()}")
     print(f"\nPrimeiros registros:\n{df.head()}")
     return df
-
-
-inspecionar_dados(df_bruto)
 
 
 def limpar_dados(df):
@@ -147,10 +139,8 @@ def criar_colunas_derivadas(df):
     """Cria colunas derivadas a partir do dataset limpo."""
     df = df.copy()
 
-    # receita_total
     df["receita_total"] = df["quantidade"] * df["preco_unitario"]
 
-    # mes, mes_nome, trimestre, ano
     df["mes"] = df["data_venda"].dt.month
     nomes_meses = {
         1: "Janeiro", 2: "Fevereiro", 3: "Marco", 4: "Abril",
@@ -161,7 +151,6 @@ def criar_colunas_derivadas(df):
     df["trimestre"] = "Q" + df["data_venda"].dt.quarter.astype(str)
     df["ano"] = df["data_venda"].dt.year
 
-    # faixa_receita_item (transformacao condicional vetorizada)
     condicoes = [
         df["receita_total"] < 500,
         (df["receita_total"] >= 500) & (df["receita_total"] < 5000),
@@ -180,7 +169,6 @@ def calcular_metricas(df):
     """
     metricas = {}
 
-    # por mes
     por_mes = df.groupby("mes").agg(
         receita_total=("receita_total", "sum"),
         quantidade=("quantidade", "sum"),
@@ -188,19 +176,16 @@ def calcular_metricas(df):
     ).reset_index()
     metricas["por_mes"] = por_mes
 
-    # top produtos (top 5)
     top_produtos = df.groupby("produto").agg(
         receita_total=("receita_total", "sum")
     ).reset_index().sort_values("receita_total", ascending=False).head(5)
     metricas["top_produtos"] = top_produtos
 
-    # por categoria
     por_categoria = df.groupby("categoria").agg(
         receita_total=("receita_total", "sum")
     ).reset_index().sort_values("receita_total", ascending=False)
     metricas["por_categoria"] = por_categoria
 
-    # por regiao (receita total e ticket medio)
     por_regiao = df.groupby("regiao").agg(
         receita_total=("receita_total", "sum"),
         ticket_medio=("receita_total", "mean"),
@@ -257,10 +242,8 @@ def calcular_estatisticas_numpy(df):
     desvio_padrao = np.std(receitas)
     soma_total = np.sum(receitas)
 
-    # broadcasting: escalonar o array para o intervalo 0-1
     receitas_normalizadas = (receitas - receitas.min()) / (receitas.max() - receitas.min())
 
-    # filtragem booleana: vendas acima da media
     vendas_acima_media = receitas[receitas > media]
     qtd_acima_media = len(vendas_acima_media)
 
@@ -282,6 +265,7 @@ def calcular_estatisticas_numpy(df):
 
     return estatisticas
 
+
 def gerar_grafico_receita_por_mes(metricas):
     """Gera o grafico de linha: receita total por mes."""
     por_mes = metricas["por_mes"]
@@ -299,6 +283,7 @@ def gerar_grafico_receita_por_mes(metricas):
     plt.close()
     print("Grafico salvo: outputs/graficos/receita_por_mes.png")
 
+
 def gerar_grafico_top_produtos(metricas):
     """Gera o grafico de barras: top 5 produtos por receita."""
     top_produtos = metricas["top_produtos"]
@@ -314,6 +299,7 @@ def gerar_grafico_top_produtos(metricas):
     plt.close()
     print("Grafico salvo: outputs/graficos/top_produtos.png")
 
+
 def gerar_grafico_dispersao(df):
     """Gera o grafico de dispersao: quantidade x receita_total, por categoria."""
     fig, ax = plt.subplots()
@@ -328,6 +314,7 @@ def gerar_grafico_dispersao(df):
     plt.close()
     print("Grafico salvo: outputs/graficos/quantidade_vs_receita.png")
 
+
 def gerar_painel_resumo(metricas, df):
     """Gera um painel 2x2 combinando as principais visualizacoes."""
     por_mes = metricas["por_mes"]
@@ -336,21 +323,18 @@ def gerar_painel_resumo(metricas, df):
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 9))
 
-    # [0,0] linha - receita por mes
     axes[0, 0].plot(por_mes["mes"], por_mes["receita_total"],
                      marker="o", linewidth=2, color="#2c6e91")
     axes[0, 0].set_title("Receita Total por Mes")
     axes[0, 0].set_xlabel("Mes")
     axes[0, 0].set_ylabel("Receita Total (R$)")
 
-    # [0,1] barras - top produtos
     sns.barplot(data=top_produtos, y="produto", x="receita_total",
                 hue="produto", legend=False, palette="Blues_d", ax=axes[0, 1])
     axes[0, 1].set_title("Top 5 Produtos por Receita")
     axes[0, 1].set_xlabel("Receita Total (R$)")
     axes[0, 1].set_ylabel("Produto")
 
-    # [1,0] dispersao - quantidade x receita por categoria
     sns.scatterplot(data=df, x="quantidade", y="receita_total",
                      hue="categoria", palette="deep", s=50, ax=axes[1, 0])
     axes[1, 0].set_title("Quantidade vs Receita por Categoria")
@@ -358,7 +342,6 @@ def gerar_painel_resumo(metricas, df):
     axes[1, 0].set_ylabel("Receita Total (R$)")
     axes[1, 0].legend(title="Categoria", fontsize=8)
 
-    # [1,1] barras - receita por regiao
     sns.barplot(data=por_regiao, y="regiao", x="receita_total",
                 hue="regiao", legend=False, palette="Greens_d", ax=axes[1, 1])
     axes[1, 1].set_title("Receita Total por Regiao")
@@ -371,6 +354,7 @@ def gerar_painel_resumo(metricas, df):
     plt.close()
     print("Grafico salvo: outputs/graficos/painel_resumo.png")
 
+
 def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
     """
     Aplica uma funcao de transformacao a uma coluna do DataFrame.
@@ -380,22 +364,103 @@ def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
     df[nome_saida] = df[coluna].apply(funcao_transformacao)
     return df
 
-df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
-df_transformado = criar_colunas_derivadas(df_limpo)
-metricas = calcular_metricas(df_transformado)
-clientes_segmentados = segmentar_clientes(df_transformado)
-estatisticas_numpy = calcular_estatisticas_numpy(df_transformado)
-gerar_grafico_receita_por_mes(metricas)
-gerar_grafico_top_produtos(metricas)
-gerar_grafico_dispersao(df_transformado)
-gerar_painel_resumo(metricas, df_transformado)
 
-df_transformado = processar_coluna(df_transformado, "receita_total",
-                                    lambda x: round(x / 1000, 2),
-                                    nome_saida="receita_em_milhares")
-df_transformado = processar_coluna(df_transformado, "quantidade",
-                                    lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
-                                    nome_saida="perfil_volume")
-print(df_transformado[["receita_total", "receita_em_milhares", "quantidade", "perfil_volume"]].head())
+def exportar_resultados(metricas, clientes, estatisticas):
+    """Exporta os resultados do projeto em CSV e JSON."""
+    os.makedirs("outputs", exist_ok=True)
+
+    metricas["por_mes"].to_csv("outputs/metricas_por_mes.csv",
+                                index=False, encoding="utf-8-sig")
+    clientes.to_csv("outputs/segmentacao_clientes.csv",
+                     index=False, encoding="utf-8-sig")
+
+    serializavel = {k: round(float(v), 2) for k, v in estatisticas.items()}
+    caminho = "outputs/estatisticas_gerais.json"
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(serializavel, f, indent=4, ensure_ascii=False)
+
+    with open(caminho, "r", encoding="utf-8") as f:
+        conferencia = json.load(f)
+    print(f"\n[Exportacao] CSVs salvos em outputs/. JSON gravado e lido: {conferencia}")
 
 
+class AnalisadorDeVendas:
+    """Encapsula o fluxo de analise dos dados de vendas."""
+
+    def __init__(self, caminho_arquivo):
+        self.caminho_arquivo = caminho_arquivo
+        self.df_bruto = None
+        self.df_limpo = None
+        self.metricas = {}
+        self.clientes = None
+        self.estatisticas_numpy = {}
+        self.relatorio_limpeza = {}
+
+    def carregar(self):
+        """Le o CSV e guarda o DataFrame bruto."""
+        self.df_bruto = pd.read_csv(self.caminho_arquivo)
+        print(f"\n[Analisador] {len(self.df_bruto)} registros lidos.")
+
+    def limpar(self):
+        """Limpa os dados reaproveitando limpar_dados()."""
+        self.df_limpo, self.relatorio_limpeza = limpar_dados(self.df_bruto.copy())
+
+    def transformar(self):
+        """Cria as colunas derivadas reaproveitando criar_colunas_derivadas()."""
+        self.df_limpo = criar_colunas_derivadas(self.df_limpo)
+
+    def analisar(self):
+        """Calcula metricas, segmentacao e operacoes NumPy."""
+        self.metricas = calcular_metricas(self.df_limpo)
+        self.clientes = segmentar_clientes(self.df_limpo)
+        self.estatisticas_numpy = calcular_estatisticas_numpy(self.df_limpo)
+
+    def visualizar(self):
+        """Gera e exporta as quatro figuras."""
+        gerar_grafico_receita_por_mes(self.metricas)
+        gerar_grafico_top_produtos(self.metricas)
+        gerar_grafico_dispersao(self.df_limpo)
+        gerar_painel_resumo(self.metricas, self.df_limpo)
+
+    def resumo(self):
+        """Imprime um resumo executivo do que foi processado."""
+        print("\n=== RESUMO EXECUTIVO ===")
+        print(f"Registros analisados: {len(self.df_limpo)}")
+        print(f"Receita total: R$ {self.estatisticas_numpy['soma_total']:.2f}")
+        print(f"Clientes segmentados: {len(self.clientes)}")
+
+
+def main():
+    """Executa o fluxo completo do SalesInsight PY."""
+    print("=" * 60)
+    print("   SALESINSIGHT PY - Analise de Dados de Vendas")
+    print("=" * 60)
+
+    if not os.path.exists("vendas.csv"):
+        gerar_dataset_vendas().to_csv("vendas.csv", index=False)
+
+    analisador = AnalisadorDeVendas("vendas.csv")
+    analisador.carregar()
+    inspecionar_dados(analisador.df_bruto)
+    analisador.limpar()
+    analisador.transformar()
+    analisador.analisar()
+    analisador.visualizar()
+
+    exportar_resultados(analisador.metricas, analisador.clientes,
+                         analisador.estatisticas_numpy)
+
+    analisador.df_limpo = processar_coluna(
+        analisador.df_limpo, "receita_total",
+        lambda x: round(x / 1000, 2), nome_saida="receita_em_milhares")
+    analisador.df_limpo = processar_coluna(
+        analisador.df_limpo, "quantidade",
+        lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
+        nome_saida="perfil_volume")
+
+    analisador.resumo()
+    print("\n[CONCLUIDO] Fluxo finalizado com sucesso.")
+
+
+if __name__ == "__main__":
+    main()
