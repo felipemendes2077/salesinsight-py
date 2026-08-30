@@ -371,6 +371,15 @@ def gerar_painel_resumo(metricas, df):
     plt.close()
     print("Grafico salvo: outputs/graficos/painel_resumo.png")
 
+def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
+    """
+    Aplica uma funcao de transformacao a uma coluna do DataFrame.
+    Demonstra o uso de funcoes como argumento (funcao de ordem superior).
+    """
+    nome_saida = nome_saida or f"{coluna}_transformado"
+    df[nome_saida] = df[coluna].apply(funcao_transformacao)
+    return df
+
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 df_transformado = criar_colunas_derivadas(df_limpo)
 metricas = calcular_metricas(df_transformado)
@@ -381,5 +390,12 @@ gerar_grafico_top_produtos(metricas)
 gerar_grafico_dispersao(df_transformado)
 gerar_painel_resumo(metricas, df_transformado)
 
+df_transformado = processar_coluna(df_transformado, "receita_total",
+                                    lambda x: round(x / 1000, 2),
+                                    nome_saida="receita_em_milhares")
+df_transformado = processar_coluna(df_transformado, "quantidade",
+                                    lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
+                                    nome_saida="perfil_volume")
+print(df_transformado[["receita_total", "receita_em_milhares", "quantidade", "perfil_volume"]].head())
 
 
