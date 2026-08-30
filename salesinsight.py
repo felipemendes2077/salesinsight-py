@@ -2,8 +2,14 @@ import pandas as pd
 import numpy as np
 import random
 import re
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
 from datetime import datetime, timedelta
 
+sns.set_theme(style="whitegrid", palette="muted")
+plt.rcParams["figure.figsize"] = (12, 6)
+plt.rcParams["axes.titlesize"] = 14
 
 def gerar_dataset_vendas(n_registros=200, seed=42):
     """Gera um dataset sintetico de vendas com dados sujos."""
@@ -276,9 +282,104 @@ def calcular_estatisticas_numpy(df):
 
     return estatisticas
 
+def gerar_grafico_receita_por_mes(metricas):
+    """Gera o grafico de linha: receita total por mes."""
+    por_mes = metricas["por_mes"]
+    os.makedirs("outputs/graficos", exist_ok=True)
+
+    fig, ax = plt.subplots()
+    ax.plot(por_mes["mes"], por_mes["receita_total"],
+            marker="o", linewidth=2, color="#2c6e91")
+    ax.set_title("Receita Total por Mes")
+    ax.set_xlabel("Mes")
+    ax.set_ylabel("Receita Total (R$)")
+    ax.set_xticks(por_mes["mes"])
+    plt.tight_layout()
+    plt.savefig("outputs/graficos/receita_por_mes.png", dpi=150)
+    plt.close()
+    print("Grafico salvo: outputs/graficos/receita_por_mes.png")
+
+def gerar_grafico_top_produtos(metricas):
+    """Gera o grafico de barras: top 5 produtos por receita."""
+    top_produtos = metricas["top_produtos"]
+
+    fig, ax = plt.subplots()
+    sns.barplot(data=top_produtos, y="produto", x="receita_total",
+                hue="produto", legend=False, palette="Blues_d", ax=ax)
+    ax.set_title("Top 5 Produtos por Receita")
+    ax.set_xlabel("Receita Total (R$)")
+    ax.set_ylabel("Produto")
+    plt.tight_layout()
+    plt.savefig("outputs/graficos/top_produtos.png", dpi=150)
+    plt.close()
+    print("Grafico salvo: outputs/graficos/top_produtos.png")
+
+def gerar_grafico_dispersao(df):
+    """Gera o grafico de dispersao: quantidade x receita_total, por categoria."""
+    fig, ax = plt.subplots()
+    sns.scatterplot(data=df, x="quantidade", y="receita_total",
+                     hue="categoria", palette="deep", s=70, ax=ax)
+    ax.set_title("Quantidade vs Receita Total por Categoria")
+    ax.set_xlabel("Quantidade")
+    ax.set_ylabel("Receita Total (R$)")
+    ax.legend(title="Categoria")
+    plt.tight_layout()
+    plt.savefig("outputs/graficos/quantidade_vs_receita.png", dpi=150)
+    plt.close()
+    print("Grafico salvo: outputs/graficos/quantidade_vs_receita.png")
+
+def gerar_painel_resumo(metricas, df):
+    """Gera um painel 2x2 combinando as principais visualizacoes."""
+    por_mes = metricas["por_mes"]
+    top_produtos = metricas["top_produtos"]
+    por_regiao = metricas["por_regiao"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+
+    # [0,0] linha - receita por mes
+    axes[0, 0].plot(por_mes["mes"], por_mes["receita_total"],
+                     marker="o", linewidth=2, color="#2c6e91")
+    axes[0, 0].set_title("Receita Total por Mes")
+    axes[0, 0].set_xlabel("Mes")
+    axes[0, 0].set_ylabel("Receita Total (R$)")
+
+    # [0,1] barras - top produtos
+    sns.barplot(data=top_produtos, y="produto", x="receita_total",
+                hue="produto", legend=False, palette="Blues_d", ax=axes[0, 1])
+    axes[0, 1].set_title("Top 5 Produtos por Receita")
+    axes[0, 1].set_xlabel("Receita Total (R$)")
+    axes[0, 1].set_ylabel("Produto")
+
+    # [1,0] dispersao - quantidade x receita por categoria
+    sns.scatterplot(data=df, x="quantidade", y="receita_total",
+                     hue="categoria", palette="deep", s=50, ax=axes[1, 0])
+    axes[1, 0].set_title("Quantidade vs Receita por Categoria")
+    axes[1, 0].set_xlabel("Quantidade")
+    axes[1, 0].set_ylabel("Receita Total (R$)")
+    axes[1, 0].legend(title="Categoria", fontsize=8)
+
+    # [1,1] barras - receita por regiao
+    sns.barplot(data=por_regiao, y="regiao", x="receita_total",
+                hue="regiao", legend=False, palette="Greens_d", ax=axes[1, 1])
+    axes[1, 1].set_title("Receita Total por Regiao")
+    axes[1, 1].set_xlabel("Receita Total (R$)")
+    axes[1, 1].set_ylabel("Regiao")
+
+    fig.suptitle("SalesInsight PY - Painel Resumo", fontsize=16)
+    plt.tight_layout()
+    plt.savefig("outputs/graficos/painel_resumo.png", dpi=150)
+    plt.close()
+    print("Grafico salvo: outputs/graficos/painel_resumo.png")
 
 df_limpo, relatorio_limpeza = limpar_dados(df_bruto.copy())
 df_transformado = criar_colunas_derivadas(df_limpo)
 metricas = calcular_metricas(df_transformado)
 clientes_segmentados = segmentar_clientes(df_transformado)
 estatisticas_numpy = calcular_estatisticas_numpy(df_transformado)
+gerar_grafico_receita_por_mes(metricas)
+gerar_grafico_top_produtos(metricas)
+gerar_grafico_dispersao(df_transformado)
+gerar_painel_resumo(metricas, df_transformado)
+
+
+
