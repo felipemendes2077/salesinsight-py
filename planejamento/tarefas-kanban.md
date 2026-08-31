@@ -59,15 +59,20 @@
 
 ## A Fazer
 
-_(mover aqui as tarefas do dia)_
+_(nenhuma — todas as tarefas foram concluidas)_
 
 ## Em Andamento
 
-_(máximo 1–2 tarefas por vez)_
+_(nenhuma)_
 
 ## Concluído
 
-_(mover ao terminar, marcando a data)_
+- [x] 01 a 23 — Todas as tarefas do backlog foram implementadas e commitadas.
+  Repositorio criado, dataset gerado, limpeza, transformacoes, metricas,
+  segmentacao, NumPy, os 4 graficos, exportacao CSV/JSON, classe
+  AnalisadorDeVendas, main(), teste do fluxo completo e README finalizado.
+- [x] Fluxo completo testado do zero (vendas.csv e outputs/ apagados e
+  regenerados automaticamente pelo script), sem erros.
 
 ---
 
