@@ -81,4 +81,4 @@ Observacao sobre desvio padrao
 O np.std() do NumPy usa por padrao ddof=0 (populacional), enquanto o .std() do pandas usa ddof=1 (amostral). Os dois calculos produzem valores ligeiramente diferentes para o mesmo conjunto de dados, e essa diferenca e esperada, nao um erro de implementacao.
 
 ## Vídeo de demonstração
-*(link a adicionar após a gravação)*
+[Assista aqui](https://drive.google.com/file/d/101_MQ_bdBU8p9oFC7RkUCNX2AfK6_OiA/view?usp=drive_link)
